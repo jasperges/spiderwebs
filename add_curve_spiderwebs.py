@@ -22,10 +22,12 @@ import bpy
 from bpy.props import (IntProperty,
                        FloatProperty,
                        BoolProperty)
+# from curve_tools import get_nurbs_points
+from . import curve_tools
 
 
 class Spiderweb(bpy.types.Operator):
-    """Add a spiderweb (or wires) between the selected objects."""
+    """Add a spiderweb (or wires) between the selected objects"""
     bl_idname = "curve.spiderweb"
     bl_label = "Create spiderweb"
     bl_options = {'REGISTER', 'UNDO', 'PRESET'}
@@ -63,7 +65,7 @@ class Spiderweb(bpy.types.Operator):
                        default=0)
     drape_min = FloatProperty(name="Drape min",
                               description="The minimum drape of the strands",
-                              default=-5.0,
+                              default=-1.0,
                               soft_min=-50.0,
                               soft_max=50.0,
                               step=10)
@@ -139,15 +141,39 @@ class Spiderweb(bpy.types.Operator):
             total_length += self.spline_length(spline)
         return total_length / len(curve.splines)
 
-    def drape_web(self, object):
-        for i, spline in enumerate(object.data.splines):
+    def range_string_to_list(range_string):
+        # !!!
+        return
+
+    def drape_web(self, curve, range_string=None):
+        if not range_string:
+            splines = curve.splines
+        else:
+            pass
+        for i, spline in enumerate(splines):
             random.seed(self.seed + i * 100)
             drape = random.uniform(self.drape_min, self.drape_max)
             length = self.spline_length(spline)
-            average_length = self.average_spline_length(object.data)
+            average_length = self.average_spline_length(curve)
             if self.length_solver:
                 drape = length * drape / average_length
             spline.points[1].co.z += drape
+
+    def pick_random_point_gauss(self, points, divide, i, sub_iter):
+        points = list(points)
+        max_index = len(points) - 1
+        random.seed(self.seed * sub_iter * i * 33)
+        point_index = int(random.gauss(max_index / 2, max_index / 2 / divide))
+        # Just to be sure the index is not out of range
+        point_index = max(0, min(len(points) - 1, point_index))
+        return points[point_index]
+
+    def get_mid_points(self, curve, divide, sub_iter):
+        mid_points = []
+        for i, _ in enumerate(curve.splines):
+            points = curve_tools.get_nurbs_points(curve, i)
+            mid_points.append(self.pick_random_point_gauss(points, divide, i, sub_iter))
+        return mid_points
 
     # Execute
     def execute(self, context):
@@ -192,13 +218,47 @@ class Spiderweb(bpy.types.Operator):
                 spline.points[2].co = loc3.to_4d()
                 spline.use_endpoint_u = True
                 spline.order_u = 3
+
+        self.drape_web(curve)
+
+        #Step 4: Create "Sub strands"
+        if self.include_ends:
+            divide = 3.8
+        else:
+            divide = 4
+        curve_copy = curve.copy()
+        for i in range(self.sub_iterations):
+            mid_points = self.get_mid_points(curve_copy, divide, i)
+            for ip, loc in enumerate(mid_points):
+                points = mid_points[:]
+                points.pop(ip)
+                spline = curve.splines.new('NURBS')
+                spline.points.add(count=2)
+                loc1 = loc.to_3d()
+                random.seed(self.seed + i * ip * 133)
+                loc3 = random.choice(points).to_3d()
+                loc2 = loc + ((loc3 - loc) * .5)
+                spline.points[0].co = loc1.to_4d()
+                spline.points[1].co = loc2.to_4d()
+                spline.points[2].co = loc3.to_4d()
+                spline.use_endpoint_u = True
+                spline.order_u = 3
+
+                # !!!TEMP DRAPE
+                random.seed(self.seed + i * ip * 100)
+                drape = random.uniform(self.drape_min, self.drape_max)
+                length = self.spline_length(spline)
+                average_length = self.average_spline_length(curve)
+                if self.length_solver:
+                    drape = length * drape / average_length
+                spline.points[1].co.z += drape
+
         cobweb = bpy.data.objects.new("cobweb", curve)
         bpy.context.scene.objects.link(cobweb)
         # Delete the object with the particle system, we don't need it anymore.
         scene.objects.unlink(particle_object)
         bpy.data.objects.remove(particle_object)
         # Add some drape to the splines.
-        self.drape_web(cobweb)
         # Select the cobweb and make it the active object.
         cobweb.select = True
         bpy.context.scene.objects.active = cobweb
