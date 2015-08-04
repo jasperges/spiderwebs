@@ -110,6 +110,7 @@ def get_random_points_on_surface(obj, amount):
     ps.settings.frame_start = 1
     ps.settings.frame_end = 1
     ps.settings.physics_type = 'NO'
+    ps.settings.use_modifier_stack = True
     bpy.context.scene.update()
     points = [p.location.copy() for p in ps.particles]
     obj.modifiers.remove(m)
@@ -119,6 +120,7 @@ def get_random_points_on_surface(obj, amount):
 
 def get_random_points_in_volume(obj, amount):
     # !!! NEEDS FIXING!!!
+    # !!! PROBABLY USE PARTICLES AS WELL!
     """
     get_random_points_in_volume(object obj, int amount)
             -> list of vector points
