@@ -18,10 +18,95 @@
 
 
 import time
-import bpy
 import math
+import bpy
 import mathutils
 import bmesh
+
+
+def create_curve(name='curve',
+                 options={"dimensions": '3D',
+                          "resolution_u": 12,
+                          "render_resolution_u": 0,
+                          "fill_mode": 'FULL',
+                          "bevel_depth": 0,
+                          "bevel_resolution": 0,
+                          "bevel_object": None}):
+    """
+    create_curve(string name, dict options) -> curve curve
+
+        string name - The name for the curve
+        dict options - A dictionary with the settings for the curve
+
+        Creates a curve object with the specified options and returns it.
+    """
+
+    curve = bpy.data.curves.new(name, 'CURVE')
+    for k in options.keys():
+        try:
+            setattr(curve, k, options[k])
+        except (AttributeError, TypeError) as err:
+            print("{}\nSkipping this setting...".format(err))
+
+    return curve
+
+
+def create_spline(curve=None,
+                  points=None,
+                  spline_type='NURBS',
+                  options={"use_cyclic_u": False,
+                           "use_bezier_u": False,
+                           "use_endpoint_u": True,
+                           "order_u": 3,
+                           "resolution_u": 12,
+                           "tilt_interpolation": 'LINEAR',
+                           "radius_interpolation": 'LINEAR',
+                           "use_smooth": True}):
+    """
+    create_spline(curve curve, list of vector points,
+                  string curve_type, dict options) -> tuple (curve, spline)
+
+        Creates/adds a spline on the given curve. Returns a tuple of the curve
+        and the spline. Returns nothing if no spline was created.
+        !!! For now only 'NURBS' and 'POLY' are supported.
+
+        curve curve           - The curve to create the spline on
+        list of vector points - The points to create the spline from
+        string spline_type    - The type of spline to create
+    """
+
+    if not curve:
+        print("No curve given to create the spline on")
+        return
+    if not len(points) > 1:
+        print("No points to create the spline from")
+        return
+    # valid_spline_types = {'POLY', 'BEZIER', 'NURBS'}
+    valid_spline_types = {'POLY', 'NURBS'}
+    if not spline_type in valid_spline_types:
+        print("Spline type: {} is not valid/supported".format(spline_type))
+        return
+    if curve.splines:
+        if not curve.splines[0].type == spline_type:
+            print("{} not compatible with other splines "
+                  "on curve".format(spline_type))
+            return
+
+    spline = curve.splines.new(spline_type)
+
+    # Set the options
+    for k in options.keys():
+        try:
+            setattr(spline, k, options[k])
+        except (AttributeError, TypeError) as err:
+            print("{}\nSkipping this setting...".format(err))
+
+    # Create and position the points
+    spline.points.add(count=len(points) - 1)
+    for i, p in enumerate(points):
+        spline.points[i].co = p.to_4d()
+
+    return (curve, spline)
 
 
 def get_length(curve, spline):
@@ -161,8 +246,8 @@ def create_test_meshes(all_verts):
 
 
 ##############################################################################
-## Functions to get points on a nurbs spline. (Thanks to Pink Vertex.)
-## Needs evaluation, cleanup and bladiebla, bla bla bla
+## Function to get points on a nurbs spline. (Thanks to Pink Vertex.)
+## Needs evaluation, cleanup and bladiebla, bla bla bla. But works fine!
 ##############################################################################
 
 def get_nurbs_points(curve, spline_index, world_space=False):
