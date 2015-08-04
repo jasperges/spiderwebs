@@ -22,7 +22,8 @@ import bpy
 from bpy.props import (IntProperty,
                        FloatProperty,
                        BoolProperty)
-# from curve_tools import get_nurbs_points
+
+from . import helpers
 from . import curve_tools
 
 

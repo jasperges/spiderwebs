@@ -32,13 +32,13 @@ bl_info = {
 
 
 if "bpy" in locals():
-    import imp
+    import importlib
     if "add_curve_spiderwebs" in locals():
-        imp.reload(add_curve_spiderwebs)
-
+        importlib.reload(add_curve_spiderwebs)
+    else:
+        from . import add_curve_spiderwebs
 
 import bpy
-from . import add_curve_spiderwebs
 
 
 # Register
