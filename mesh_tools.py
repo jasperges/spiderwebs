@@ -95,8 +95,8 @@ def get_random_points_on_edges(mesh, amount, transform_matrix):
 
 def get_random_points_on_surface(obj, amount):
     """
-    get_random_points_on_surface(mesh mesh, int amount)
-            -> list of vector
+    get_random_points_on_surface(objet obj, int amount)
+            -> list of vector points
 
         Gets <amount> number of random points on the surface of the object.
 
@@ -109,6 +109,7 @@ def get_random_points_on_surface(obj, amount):
     ps.settings.count = amount
     ps.settings.frame_start = 1
     ps.settings.frame_end = 1
+    ps.settings.emit_from = 'FACE'
     ps.settings.physics_type = 'NO'
     ps.settings.use_modifier_stack = True
     bpy.context.scene.update()
@@ -118,50 +119,76 @@ def get_random_points_on_surface(obj, amount):
     return points
 
 
+# def get_random_points_in_volume(obj, amount):
+#     # !!! NEEDS FIXING!!!
+#     # !!! PROBABLY USE PARTICLES AS WELL!
+#     """
+#     get_random_points_in_volume(object obj, int amount)
+#             -> list of vector points
+
+#         Gets <amount> number of random points inside the volume of the mesh.
+
+#         object obj              - the object to get the points from
+#         int amount              - the amount of points to return
+
+#     Adopted from code by CoDEmanX and pi (19.01.2014)
+#     """
+
+#     def point_in_box(O, W):
+#         return Vector((random.uniform(O.x, W.x),
+#                        random.uniform(O.y, W.y),
+#                        random.uniform(O.z, W.z)))
+
+#     points = []
+#     max_attempts = 999
+#     bbox = [Vector(b) for b in obj.bound_box]
+#     O = bbox[0]
+#     W = bbox[6]
+#     X = Vector((W.x - O.x, 0.0, 0.0))
+#     errors = 0
+
+#     for _ in range(amount):
+#         got_point = False
+#         for _ in range(max_attempts):
+#             p = point_in_box(O, W)
+#             _, normal, index = obj.ray_cast(p, p + X)
+#             if index > -1 and normal.x > 0.0:
+#                 got_point = True
+#                 break
+#         if not got_point:
+#             errors += 1
+#             continue
+#         points.append(obj.matrix_world * p)
+
+#     if errors:
+#         print("Max attempts reached, got {} points less "
+#               "then specified...".format(errors))
+
+#     return points
+
+
 def get_random_points_in_volume(obj, amount):
-    # !!! NEEDS FIXING!!!
-    # !!! PROBABLY USE PARTICLES AS WELL!
     """
     get_random_points_in_volume(object obj, int amount)
             -> list of vector points
 
-        Gets <amount> number of random points inside the volume of the mesh.
+        Gets <amount> number of random points inside the volume of the object.
 
         object obj              - the object to get the points from
         int amount              - the amount of points to return
-
-    Adopted from code by CoDEmanX and pi (19.01.2014)
     """
 
-    def point_in_box(O, W):
-        return Vector((random.uniform(O.x, W.x),
-                       random.uniform(O.y, W.y),
-                       random.uniform(O.z, W.z)))
-
-    points = []
-    max_attempts = 999
-    bbox = [Vector(b) for b in obj.bound_box]
-    O = bbox[0]
-    W = bbox[6]
-    X = Vector((W.x - O.x, 0.0, 0.0))
-    errors = 0
-
-    for _ in range(amount):
-        got_point = False
-        for _ in range(max_attempts):
-            p = point_in_box(O, W)
-            _, normal, index = obj.ray_cast(p, p + X)
-            if index > -1 and normal.x > 0.0:
-                got_point = True
-                break
-        if not got_point:
-            errors += 1
-            continue
-        points.append(obj.matrix_world * p)
-
-    if errors:
-        print("Max attempts reached, got {} points less "
-              "then specified...".format(errors))
+    m = obj.modifiers.new('points', 'PARTICLE_SYSTEM')
+    ps = m.particle_system
+    ps.settings.count = amount
+    ps.settings.frame_start = 1
+    ps.settings.frame_end = 1
+    ps.settings.emit_from = 'VOLUME'
+    ps.settings.physics_type = 'NO'
+    ps.settings.use_modifier_stack = True
+    bpy.context.scene.update()
+    points = [p.location.copy() for p in ps.particles]
+    obj.modifiers.remove(m)
 
     return points
 
