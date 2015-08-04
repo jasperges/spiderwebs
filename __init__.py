@@ -35,8 +35,8 @@ if "bpy" in locals():
     import importlib
     if "add_curve_spiderwebs" in locals():
         importlib.reload(add_curve_spiderwebs)
-    else:
-        from . import add_curve_spiderwebs
+else:
+    from . import add_curve_spiderwebs
 
 import bpy
 
@@ -50,13 +50,11 @@ def Spiderweb_menu_item(self, context):
 
 def register():
     bpy.utils.register_module(__name__)
-
     bpy.types.INFO_MT_curve_add.append(Spiderweb_menu_item)
 
 
 def unregister():
     bpy.utils.unregister_module(__name__)
-
     bpy.types.INFO_MT_curve_add.remove(Spiderweb_menu_item)
 
 
