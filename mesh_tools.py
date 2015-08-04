@@ -20,7 +20,7 @@
 import math
 import random
 import bpy
-import bpy_extras
+import bpy_extras.mesh_utils
 from mathutils import Vector
 
 
@@ -224,12 +224,12 @@ def get_points(obj, amount=1, method='SURFACE', apply_modifiers=True):
         return [transform_matrix.to_translation()]
 
 
-obj = bpy.data.objects['Suzanne']
-points = get_points(obj, amount=33, method='SURFACE')
-for p in points:
-    bpy.ops.mesh.primitive_cube_add(location=p, radius=.05)
-    bpy.ops.object.material_slot_add()
-    bpy.context.object.material_slots[0].material = bpy.data.materials['red']
-for obj in bpy.data.objects:
-    if 'Cube' in obj.name:
-        obj.select = True
+# obj = bpy.data.objects['Suzanne']
+# points = get_points(obj, amount=33, method='SURFACE')
+# for p in points:
+#     bpy.ops.mesh.primitive_cube_add(location=p, radius=.05)
+#     bpy.ops.object.material_slot_add()
+#     bpy.context.object.material_slots[0].material = bpy.data.materials['red']
+# for obj in bpy.data.objects:
+#     if 'Cube' in obj.name:
+#         obj.select = True
