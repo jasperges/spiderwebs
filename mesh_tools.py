@@ -66,43 +66,67 @@ def get_random_points_on_edges(mesh, amount, transform_matrix):
     return points
 
 
-def get_random_points_on_surface(mesh, amount, transform_matrix):
+# def get_random_points_on_surface(mesh, amount, transform_matrix):
+#     """
+#     get_random_points_on_surface(mesh mesh, int amount, matrix transform_matrix)
+#             -> list of vector points
+
+#         Gets <amount> number of random points on the surface of the mesh.
+
+#         mesh mesh               - the mesh to get the points from
+#         int amount              - the amount of points to return
+#         matrix transform_matrix - the matrix to transform the points by
+#     """
+
+#     tessfaces = mesh.tessfaces
+#     num_points = math.ceil(amount / len(tessfaces))
+#     points = bpy_extras.mesh_utils.face_random_points(num_points, tessfaces)
+#     # points = random.sample(points, amount)
+#     random.shuffle(points)
+#     points = [transform_matrix * p for p in points[:amount]]
+#     # points = []
+#     # for _ in range(amount):
+#     #     face = random.choice(mesh.tessfaces)
+#     #     p = bpy_extras.mesh_utils.face_random_points(1, [face])[0]
+#     #     points.append(transform_matrix * p)
+
+#     return points
+
+
+def get_random_points_on_surface(obj, amount):
     """
-    get_random_points_on_surface(mesh mesh, int amount, matrix transform_matrix)
-            -> list of vector points
+    get_random_points_on_surface(mesh mesh, int amount)
+            -> list of vector
 
-        Gets <amount> number of random points on the surface of the mesh.
+        Gets <amount> number of random points on the surface of the object.
 
-        mesh mesh               - the mesh to get the points from
+        object obj              - the object to get the points from
         int amount              - the amount of points to return
-        matrix transform_matrix - the matrix to transform the points by
     """
 
-    tessfaces = mesh.tessfaces
-    num_points = math.ceil(amount / len(tessfaces))
-    points = bpy_extras.mesh_utils.face_random_points(num_points, tessfaces)
-    # points = random.sample(points, amount)
-    random.shuffle(points)
-    points = [transform_matrix * p for p in points[:amount]]
-    # points = []
-    # for _ in range(amount):
-    #     face = random.choice(mesh.tessfaces)
-    #     p = bpy_extras.mesh_utils.face_random_points(1, [face])[0]
-    #     points.append(transform_matrix * p)
+    m = obj.modifiers.new('points', 'PARTICLE_SYSTEM')
+    ps = m.particle_system
+    ps.settings.count = amount
+    ps.settings.frame_start = 1
+    ps.settings.frame_end = 1
+    ps.settings.physics_type = 'NO'
+    bpy.context.scene.update()
+    points = [p.location.copy() for p in ps.particles]
+    obj.modifiers.remove(m)
 
     return points
 
 
-def get_random_points_in_volume(obj, amount, transform_matrix):
+def get_random_points_in_volume(obj, amount):
+    # !!! NEEDS FIXING!!!
     """
-    get_random_points_in_volume(mesh mesh, int amount, matrix transform_matrix)
+    get_random_points_in_volume(object obj, int amount)
             -> list of vector points
 
         Gets <amount> number of random points inside the volume of the mesh.
 
         object obj              - the object to get the points from
         int amount              - the amount of points to return
-        matrix transform_matrix - the matrix to transform the points by
 
     Adopted from code by CoDEmanX and pi (19.01.2014)
     """
@@ -131,7 +155,7 @@ def get_random_points_in_volume(obj, amount, transform_matrix):
         if not got_point:
             errors += 1
             continue
-        points.append(transform_matrix * p)
+        points.append(obj.matrix_world * p)
 
     if errors:
         print("Max attempts reached, got {} points less "
@@ -201,7 +225,7 @@ def get_points(obj, amount=1, method='SURFACE', apply_modifiers=True):
 
     if apply_modifiers and not method == 'PIVOT':
         mesh = obj.to_mesh(bpy.context.scene, True, 'PREVIEW')
-    else:
+    elif method != 'PIVOT':
         mesh = obj.data.copy()
     transform_matrix = obj.matrix_world.copy()
 
@@ -213,12 +237,12 @@ def get_points(obj, amount=1, method='SURFACE', apply_modifiers=True):
         # edge = random.choice(mesh.edges)
         # points.append(get_point_on_edge(edge, transform_matrix))
     if method == 'SURFACE':
-        return get_random_points_on_surface(mesh, amount, transform_matrix)
+        return get_random_points_on_surface(obj, amount)
         # face = random.choice(mesh.tessfaces)
         # point = bpy_extras.mesh_utils.face_random_points(1, [face])[0]
         # points.append(transform_matrix * point)
     if method == 'VOLUME':
-        return get_random_points_in_volume(obj, amount, transform_matrix)
+        return get_random_points_in_volume(obj, amount)
     if method == 'PIVOT':
         # Only return the pivot point
         return [transform_matrix.to_translation()]
