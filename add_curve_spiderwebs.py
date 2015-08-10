@@ -16,7 +16,18 @@
 #
 # ##### END GPL LICENSE BLOCK #####
 
+
 # Import modules.
+if "bpy" in locals():
+    import importlib
+    if "mesh_tools" in locals():
+        importlib.reload(mesh_tools)
+    if "curve_tools" in locals():
+        importlib.reload(curve_tools)
+else:
+    from . import mesh_tools
+    from . import curve_tools
+
 import itertools
 import random
 import bpy
@@ -24,8 +35,6 @@ from bpy.props import (IntProperty,
                        FloatProperty,
                        BoolProperty,
                        EnumProperty)
-from . import mesh_tools
-from . import curve_tools
 
 
 class Spiderweb(bpy.types.Operator):
