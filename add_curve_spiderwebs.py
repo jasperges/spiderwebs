@@ -133,6 +133,17 @@ class Spiderweb(bpy.types.Operator):
 
     # Execute
     def execute(self, context):
+        random.seed(self.seed)
+
+        def drape(splines):
+            random.seed(self.seed)
+            for i, spline in enumerate(splines):
+                # random.seed(self.seed + i)
+                # For now only a spline with 3 points works
+                spline[1].z += random.uniform(self.drape_min, self.drape_max)
+
+            return splines
+
         selected_objects = bpy.context.selected_objects
         web_objects = [obj for obj in selected_objects if obj.type == 'MESH']
 
@@ -142,6 +153,7 @@ class Spiderweb(bpy.types.Operator):
         # to get <amount> total points.
         quotient, remainder = divmod(self.amount, len(web_objects))
         # Randomize order of selected objects
+        random.seed(self.seed)
         random.shuffle(web_objects)
         for i, obj in enumerate(web_objects):
             if i in range(remainder):
@@ -159,23 +171,78 @@ class Spiderweb(bpy.types.Operator):
         if not sum(len(v) for v in end_points.values()) > 1:
             # We need at least 2 points.
             return
-        curve = curve_tools.create_curve(name="web")
+
+        # Create the points of the main strands (every spline has 3 points)
+        main_splines = []
+        end_vectors = list(itertools.chain(*end_points.values()))
+        random.seed(self.seed)
         for i in range(self.main_iterations):
-            end_vectors = list(itertools.chain(*end_points.values()))
-            for ip, p in enumerate(end_vectors):
+            for ip, start_point in enumerate(end_vectors):
                 for _ in range(9999):
-                    p2 = random.choice(end_vectors)
-                    if not p2 == p:
+                    end_point = random.choice(end_vectors)
+                    if not end_point == start_point:
                         break
-                # points = end_vectors[:]
-                # points.pop(ip)
-                # p2 = random.choice(points)
-                curve, spline = curve_tools.create_spline(curve=curve,
-                                                          points=[p, p2])
+                mid_point = start_point + (end_point - start_point) * 0.5
+                main_splines.append((start_point, mid_point, end_point))
+
+        # Drape main splines
+        main_splines = drape(main_splines)
+
+        # Create the points of the sub strands (every spline has 3 points)
+        sub_splines = []
+        resolution_points = [curve_tools.get_nurbs_points(spline)
+                             for spline in main_splines]
+        random.seed(self.seed)
+        for i in range(self.sub_iterations):
+            for _ in range(0, len(resolution_points), 2):
+                # Pick a random spline to start from
+                spline1 = random.choice(resolution_points)
+                # Pick a random spline to end which is not the start spline
+                for _ in range(9999):
+                    spline2 = random.choice(resolution_points)
+                    if not spline2 == spline1:
+                        break
+                # Pick a random start point from spline1
+                start_index = int(random.triangular(0, len(spline1)))
+                start_point = spline1[start_index]
+                # Pick a random end point from spline2
+                end_index = int(random.triangular(0, len(spline2)))
+                end_point = spline2[end_index]
+                # Create the mid point
+                mid_point = start_point + (end_point - start_point) * 0.5
+                # Add the points to sub_splines
+                sub_splines.append((start_point, mid_point, end_point))
+
+        # Drape the sub splines
+        sub_splines = drape(sub_splines)
+
+        curve = curve_tools.create_curve(name="web")
+        for spline in main_splines + sub_splines:
+            points = [p for p in spline]
+            curve_tools.create_spline(curve=curve, points=points)
 
         web = bpy.data.objects.new("web", curve)
         bpy.context.scene.objects.link(web)
         bpy.context.scene.objects.active = web
+
+
+        # curve = curve_tools.create_curve(name="web")
+        # for i in range(self.main_iterations):
+        #     end_vectors = list(itertools.chain(*end_points.values()))
+        #     for ip, p in enumerate(end_vectors):
+        #         for _ in range(9999):
+        #             p2 = random.choice(end_vectors)
+        #             if not p2 == p:
+        #                 break
+        #         # points = end_vectors[:]
+        #         # points.pop(ip)
+        #         # p2 = random.choice(points)
+        #         curve, spline = curve_tools.create_spline(curve=curve,
+        #                                                   points=[p, p2])
+
+        # web = bpy.data.objects.new("web", curve)
+        # bpy.context.scene.objects.link(web)
+        # bpy.context.scene.objects.active = web
 
         # end_positions = []
         # scene = context.scene

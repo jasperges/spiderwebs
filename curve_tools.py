@@ -28,7 +28,7 @@ def create_curve(name='curve',
                  options={"dimensions": '3D',
                           "resolution_u": 12,
                           "render_resolution_u": 0,
-                          "fill_mode": 'FULL',
+                          # "fill_mode": 'FULL',
                           "bevel_depth": 0,
                           "bevel_resolution": 0,
                           "bevel_object": None}):
@@ -94,17 +94,17 @@ def create_spline(curve=None,
 
     spline = curve.splines.new(spline_type)
 
+    # Create and position the points
+    spline.points.add(count=len(points) - 1)
+    for i, p in enumerate(points):
+        spline.points[i].co = p.to_4d()
+
     # Set the options
     for k in options.keys():
         try:
             setattr(spline, k, options[k])
         except (AttributeError, TypeError) as err:
             print("{}\nSkipping this setting...".format(err))
-
-    # Create and position the points
-    spline.points.add(count=len(points) - 1)
-    for i, p in enumerate(points):
-        spline.points[i].co = p.to_4d()
 
     return (curve, spline)
 
@@ -250,28 +250,32 @@ def create_test_meshes(all_verts):
 ## Needs evaluation, cleanup and bladiebla, bla bla bla. But works fine!
 ##############################################################################
 
-def get_nurbs_points(curve, spline_index, world_space=False):
+def get_nurbs_points(spline_points=None, curve=None,
+                     curve_obj=None, spline_index=0, world_space=False):
 
-    def macro_knotsu(nu):
-        if nu.use_cyclic_u:
-            return nu.order_u + nu.point_count_u + (nu.order_u - 1)
+    def macro_knotsu(use_cyclic_u, order_u, point_count_u):
+        if use_cyclic_u:
+            return order_u + point_count_u + (order_u - 1)
         else:
-            return nu.order_u + nu.point_count_u + nu.order_u
+            return order_u + point_count_u + order_u
 
-    def macro_segmentsu(nu):
-        if nu.use_cyclic_u:
-            return nu.point_count_u
+    def macro_segmentsu(use_cyclic_u, point_count_u):
+        if use_cyclic_u:
+            return point_count_u
         else:
-            return nu.point_count_u - 1
+            return point_count_u - 1
 
-    def makeknots(nu):
-        knots = [0.0] * (4 + macro_knotsu(nu))
-        flag = nu.use_endpoint_u + (nu.use_bezier_u << 1)
-        if nu.use_cyclic_u:
-            calcknots(knots, nu.point_count_u, nu.order_u, 0)
-            makecyclicknots(knots, nu.point_count_u, nu.order_u)
+    def makeknots(use_cyclic_u, order_u, point_count_u,
+                  use_endpoint_u, use_bezier_u):
+        knots = [0.0] * (4 + macro_knotsu(use_cyclic_u,
+                                          order_u,
+                                          point_count_u))
+        flag = use_endpoint_u + (use_bezier_u << 1)
+        if use_cyclic_u:
+            calcknots(knots, point_count_u, order_u, 0)
+            makecyclicknots(knots, point_count_u, order_u)
         else:
-            calcknots(knots, nu.point_count_u, nu.order_u, flag)
+            calcknots(knots, point_count_u, order_u, flag)
         return knots
 
     def calcknots(knots, pnts, order, flag):
@@ -378,23 +382,47 @@ def get_nurbs_points(curve, spline_index, world_space=False):
 
         return start, end
 
-    def nurb_make_curve(nu, resolu, stride):
+    def nurb_make_curve(resolu, stride, nu=None, points=None):
+        if not nu and not points:
+            return
+
+        if nu:
+            resolution_u = nu.resolution_u
+            point_count_u = nu.point_count_u
+            order_u = nu.order_u
+            use_cyclic_u = nu.use_cyclic_u
+            points = [p.co for p in nu.points]
+            use_endpoint_u = nu.use_endpoint_u
+            use_bezier_u = nu.use_bezier_u
+        else:
+            # Values are the values I want for now :)
+            resolution_u = 12
+            point_count_u = len(points)
+            order_u = 3
+            use_cyclic_u = False
+            points = points
+            use_endpoint_u = True
+            use_bezier_u = False
+        macro_segments_u = macro_segmentsu(use_cyclic_u, point_count_u)
+        macro_knots_u = macro_knotsu(use_cyclic_u, order_u, point_count_u)
+        knots = makeknots(use_cyclic_u, order_u, point_count_u,
+                          use_endpoint_u, use_bezier_u)
+
         EPS = 1e-6
         coord_index = istart = iend = 0
 
-        coord_array = [0.0] * (3 * nu.resolution_u * macro_segmentsu(nu))
-        sum_array = [0] * nu.point_count_u
-        basisu = [0.0] * macro_knotsu(nu)
-        knots = makeknots(nu)
+        coord_array = [0.0] * (3 * resolution_u * macro_segments_u)
+        sum_array = [0] * point_count_u
+        basisu = [0.0] * macro_knots_u
 
-        resolu = resolu * macro_segmentsu(nu)
-        ustart = knots[nu.order_u - 1]
-        if nu.use_cyclic_u:
-            uend = knots[nu.point_count_u + nu.order_u - 1]
+        resolu = resolu * macro_segments_u
+        ustart = knots[order_u - 1]
+        if use_cyclic_u:
+            uend = knots[point_count_u + order_u - 1]
             ustep = (uend - ustart) / resolu
-            cycl = nu.order_u - 1
+            cycl = order_u - 1
         else:
-            uend = knots[nu.point_count_u]
+            uend = knots[point_count_u]
             ustep = (uend - ustart) / (resolu - 1)
             cycl = 0
 
@@ -402,8 +430,8 @@ def get_nurbs_points(curve, spline_index, world_space=False):
         while resolu:
             resolu -= 1
             istart, iend = basisNurb(u,
-                                     nu.order_u,
-                                     nu.point_count_u + cycl,
+                                     order_u,
+                                     point_count_u + cycl,
                                      knots,
                                      basisu,
                                      istart,
@@ -414,12 +442,12 @@ def get_nurbs_points(curve, spline_index, world_space=False):
             sum_index = 0
             pt_index = istart - 1
             for i in range(istart, iend + 1):
-                if i >= nu.point_count_u:
-                    pt_index = i - nu.point_count_u
+                if i >= point_count_u:
+                    pt_index = i - point_count_u
                 else:
                     pt_index += 1
 
-                sum_array[sum_index] = basisu[i] * nu.points[pt_index].co[3]
+                sum_array[sum_index] = basisu[i] * points[pt_index][3]
                 sumdiv += sum_array[sum_index]
                 sum_index += 1
 
@@ -434,14 +462,14 @@ def get_nurbs_points(curve, spline_index, world_space=False):
             sum_index = 0
             pt_index = istart - 1
             for i in range(istart, iend + 1):
-                if i >= nu.point_count_u:
-                    pt_index = i - nu.point_count_u
+                if i >= point_count_u:
+                    pt_index = i - point_count_u
                 else:
                     pt_index += 1
 
                 if sum_array[sum_index] != 0.0:
                     for j in range(3):
-                        coord_array[coord_index + j] += sum_array[sum_index] * nu.points[pt_index].co[j]
+                        coord_array[coord_index + j] += sum_array[sum_index] * points[pt_index][j]
                 sum_index += 1
 
             coord_index += stride
@@ -449,19 +477,28 @@ def get_nurbs_points(curve, spline_index, world_space=False):
 
         return coord_array
 
-    spline = curve.splines[spline_index]
-    if curve.render_resolution_u:
-        resolution = curve.render_resolution_u
-    else:
-        resolution = curve.resolution_u
-    coord_array = nurb_make_curve(spline, resolution, 3)
-    if world_space:
-        matrix_world = nurbs_obj.matrix_world
-        points = (matrix_world * mathutils.Vector(coord_array[i: i + 3])
-                  for i in range(0, len(coord_array), 3))
-    else:
-        points = (mathutils.Vector(coord_array[i: i + 3])
-                  for i in range(0, len(coord_array), 3))
+    if not spline_points and not curve:
+        return
+
+    if curve:
+        spline = curve.splines[spline_index]
+        if curve.render_resolution_u:
+            resolution = curve.render_resolution_u
+        else:
+            resolution = curve.resolution_u
+        coord_array = nurb_make_curve(resolution, 3, nu=spline)
+
+    else:   # spline_points are given
+        resolution = 12
+        spline_points = [p.to_4d() for p in spline_points]
+        coord_array = nurb_make_curve(resolution, 3, points=spline_points)
+
+    points = [mathutils.Vector(coord_array[i: i + 3])
+              for i in range(0, len(coord_array), 3)]
+
+    if world_space and curve_obj:
+        matrix_world = curve_obj.matrix_world
+        points = [matrix_world * p for p in points]
 
     return points
 
