@@ -142,7 +142,8 @@ class Spiderweb(bpy.types.Operator):
             points = mesh_tools.get_points(obj,
                                            amount=obj_amount,
                                            method=self.method,
-                                           apply_modifiers=True)
+                                           apply_modifiers=True,
+                                           seed=self.seed)
             end_points[obj] = points
 
         # Create splines between two random points.

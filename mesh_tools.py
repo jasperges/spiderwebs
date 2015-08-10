@@ -24,9 +24,10 @@ import bpy_extras.mesh_utils
 from mathutils import Vector
 
 
-def get_random_points_on_verts(mesh, amount, transform_matrix):
+def get_random_points_on_verts(mesh, amount, transform_matrix, seed=0):
     """
-    get_random_points_on_verts(mesh mesh, int amount, matrix transform_matrix)
+    get_random_points_on_verts(mesh mesh, int amount,
+                               matrix transform_matrix, int seed)
             -> list of vector points
 
         Gets <amount> number of random vert coordinates.
@@ -34,8 +35,10 @@ def get_random_points_on_verts(mesh, amount, transform_matrix):
         mesh mesh               - the mesh to get the points from
         int amount              - the amount of points to return
         matrix transform_matrix - the matrix to transform the points by
+        int seed                - the seed for the randomization
     """
 
+    random.seed(seed)
     points = []
     for _ in range(amount):
         points.append(transform_matrix * random.choice(mesh.vertices).co)
@@ -43,9 +46,10 @@ def get_random_points_on_verts(mesh, amount, transform_matrix):
     return points
 
 
-def get_random_points_on_edges(mesh, amount, transform_matrix):
+def get_random_points_on_edges(mesh, amount, transform_matrix, seed=0):
     """
-    get_random_points_on_edges(mesh mesh, int amount, matrix transform_matrix)
+    get_random_points_on_edges(mesh mesh, int amount,
+                               matrix transform_matrix, int seed)
             -> list of vector points
 
         Gets <amount> number of random points on the edges of the mesh.
@@ -53,8 +57,10 @@ def get_random_points_on_edges(mesh, amount, transform_matrix):
         mesh mesh               - the mesh to get the points from
         int amount              - the amount of points to return
         matrix transform_matrix - the matrix to transform the points by
+        int seed                - the seed for the randomization
     """
 
+    random.seed(seed)
     points = []
     for _ in range(amount):
         edge = random.choice(mesh.edges)
@@ -93,19 +99,21 @@ def get_random_points_on_edges(mesh, amount, transform_matrix):
 #     return points
 
 
-def get_random_points_on_surface(obj, amount):
+def get_random_points_on_surface(obj, amount, seed=0):
     """
-    get_random_points_on_surface(objet obj, int amount)
+    get_random_points_on_surface(objet obj, int amount, int seed)
             -> list of vector points
 
         Gets <amount> number of random points on the surface of the object.
 
         object obj              - the object to get the points from
         int amount              - the amount of points to return
+        int seed                - the seed for the randomization
     """
 
     m = obj.modifiers.new('points', 'PARTICLE_SYSTEM')
     ps = m.particle_system
+    ps.seed = seed
     ps.settings.count = amount
     ps.settings.frame_start = 1
     ps.settings.frame_end = 1
@@ -167,19 +175,21 @@ def get_random_points_on_surface(obj, amount):
 #     return points
 
 
-def get_random_points_in_volume(obj, amount):
+def get_random_points_in_volume(obj, amount, seed=0):
     """
-    get_random_points_in_volume(object obj, int amount)
+    get_random_points_in_volume(object obj, int amount, int seed)
             -> list of vector points
 
         Gets <amount> number of random points inside the volume of the object.
 
         object obj              - the object to get the points from
         int amount              - the amount of points to return
+        int seed                - the seed for the randomization
     """
 
     m = obj.modifiers.new('points', 'PARTICLE_SYSTEM')
     ps = m.particle_system
+    ps.seed = seed
     ps.settings.count = amount
     ps.settings.frame_start = 1
     ps.settings.frame_end = 1
@@ -225,7 +235,7 @@ def get_random_points_in_volume(obj, amount):
 #         return transform_matrix * v.co
 
 
-def get_points(obj, amount=1, method='SURFACE', apply_modifiers=True):
+def get_points(obj, amount=1, method='SURFACE', apply_modifiers=True, seed=0):
     """
     get_points(object obj,
                int amount,
@@ -245,6 +255,7 @@ def get_points(obj, amount=1, method='SURFACE', apply_modifiers=True):
                                               - 'VOLUME'
                                               - 'PIVOT'
         bool apply_modifiers - use the deformed or original mesh
+        int seed                - the seed for the randomization
     """
 
     valid_methods = {'VERTS', 'EDGES', 'SURFACE', 'VOLUME', 'PIVOT'}
@@ -259,19 +270,21 @@ def get_points(obj, amount=1, method='SURFACE', apply_modifiers=True):
     transform_matrix = obj.matrix_world.copy()
 
     if method == 'VERTS':
-        return get_random_points_on_verts(mesh, amount, transform_matrix)
+        return get_random_points_on_verts(mesh, amount,
+                                          transform_matrix, seed=seed)
         # points.append(transform_matrix * random.choice(mesh.vertices).co)
     if method == 'EDGES':
-        return get_random_points_on_edges(mesh, amount, transform_matrix)
+        return get_random_points_on_edges(mesh, amount,
+                                          transform_matrix, seed=seed)
         # edge = random.choice(mesh.edges)
         # points.append(get_point_on_edge(edge, transform_matrix))
     if method == 'SURFACE':
-        return get_random_points_on_surface(obj, amount)
+        return get_random_points_on_surface(obj, amount, seed=seed)
         # face = random.choice(mesh.tessfaces)
         # point = bpy_extras.mesh_utils.face_random_points(1, [face])[0]
         # points.append(transform_matrix * point)
     if method == 'VOLUME':
-        return get_random_points_in_volume(obj, amount)
+        return get_random_points_in_volume(obj, amount, seed=seed)
     if method == 'PIVOT':
         # Only return the pivot point
         return [transform_matrix.to_translation()]
