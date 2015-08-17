@@ -148,7 +148,7 @@ class Spiderweb(bpy.types.Operator):
         web_objects = [obj for obj in selected_objects if obj.type == 'MESH']
 
         # Get (random) points on/in the selected objects.
-        end_points = {}
+        end_points = []
         # Determine how many points to create per object,
         # to get <amount> total points.
         quotient, remainder = divmod(self.amount, len(web_objects))
@@ -165,16 +165,17 @@ class Spiderweb(bpy.types.Operator):
                                            method=self.method,
                                            apply_modifiers=True,
                                            seed=self.seed)
-            end_points[obj] = points
+            end_points.append([obj, points])
+
+        end_vectors = list(itertools.chain(*(l[1] for l in end_points)))
 
         # Create splines between two random points.
-        if not sum(len(v) for v in end_points.values()) > 1:
+        if not len(end_vectors) > 1:
             # We need at least 2 points.
             return
 
         # Create the points of the main strands (every spline has 3 points)
         main_splines = []
-        end_vectors = list(itertools.chain(*end_points.values()))
         random.seed(self.seed)
         for i in range(self.main_iterations):
             for ip, start_point in enumerate(end_vectors):
@@ -186,7 +187,7 @@ class Spiderweb(bpy.types.Operator):
                 main_splines.append((start_point, mid_point, end_point))
 
         # Drape main splines
-        # main_splines = drape(main_splines)
+        main_splines = drape(main_splines)
 
         # Create the points of the sub strands (every spline has 3 points)
         sub_splines = []
@@ -214,7 +215,7 @@ class Spiderweb(bpy.types.Operator):
                 sub_splines.append((start_point, mid_point, end_point))
 
         # Drape the sub splines
-        # sub_splines = drape(sub_splines)
+        sub_splines = drape(sub_splines)
 
         curve = curve_tools.create_curve(name="web")
         for spline in main_splines + sub_splines:
