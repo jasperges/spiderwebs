@@ -60,9 +60,6 @@ class Spiderweb(bpy.types.Operator):
                                   default=1,
                                   min=1,
                                   max=100)
-    include_ends = BoolProperty(name="Include ends",
-                                description="Include ends",
-                                default=True)
     sub_iterations = IntProperty(name="Iterations",
                                  description="Iterations",
                                  default=3,
@@ -114,7 +111,6 @@ class Spiderweb(bpy.types.Operator):
         box.prop(self, 'main_iterations')
         box = layout.box()
         box.label(text="Sub strands")
-        box.prop(self, 'include_ends')
         box.prop(self, 'sub_iterations')
         box = layout.box()
         box.label(text="General options")
@@ -225,94 +221,6 @@ class Spiderweb(bpy.types.Operator):
         web = bpy.data.objects.new("web", curve)
         bpy.context.scene.objects.link(web)
         bpy.context.scene.objects.active = web
-
-
-        # curve = curve_tools.create_curve(name="web")
-        # for i in range(self.main_iterations):
-        #     end_vectors = list(itertools.chain(*end_points.values()))
-        #     for ip, p in enumerate(end_vectors):
-        #         for _ in range(9999):
-        #             p2 = random.choice(end_vectors)
-        #             if not p2 == p:
-        #                 break
-        #         # points = end_vectors[:]
-        #         # points.pop(ip)
-        #         # p2 = random.choice(points)
-        #         curve, spline = curve_tools.create_spline(curve=curve,
-        #                                                   points=[p, p2])
-
-        # web = bpy.data.objects.new("web", curve)
-        # bpy.context.scene.objects.link(web)
-        # bpy.context.scene.objects.active = web
-
-        # end_positions = []
-        # scene = context.scene
-
-        # # Step 3: Create "Main strands" using particles for end positions
-        # if not len(end_positions) > 1:
-        #     return
-        # curve = bpy.data.curves.new("cobweb", 'CURVE')
-        # curve.dimensions = '3D'
-        # curve.fill_mode = 'FULL'
-        # for i in range(self.main_iterations):
-        #     for ip, loc in enumerate(end_positions):
-        #         points = end_positions[:]
-        #         points.pop(ip)
-        #         spline = curve.splines.new('NURBS')
-        #         spline.points.add(count=2)
-        #         loc1 = loc
-        #         random.seed(self.seed + i * ip * 100)
-        #         loc3 = random.choice(points)
-        #         loc2 = loc + ((loc3 - loc) * .5)
-        #         spline.points[0].co = loc1.to_4d()
-        #         spline.points[1].co = loc2.to_4d()
-        #         spline.points[2].co = loc3.to_4d()
-        #         spline.use_endpoint_u = True
-        #         spline.order_u = 3
-
-        # self.drape_web(curve)
-
-        # #Step 4: Create "Sub strands"
-        # if self.include_ends:
-        #     divide = 3.8
-        # else:
-        #     divide = 4
-        # curve_copy = curve.copy()
-        # for i in range(self.sub_iterations):
-        #     mid_points = self.get_mid_points(curve_copy, divide, i)
-        #     for ip, loc in enumerate(mid_points):
-        #         points = mid_points[:]
-        #         points.pop(ip)
-        #         spline = curve.splines.new('NURBS')
-        #         spline.points.add(count=2)
-        #         loc1 = loc.to_3d()
-        #         random.seed(self.seed + i * ip * 133)
-        #         loc3 = random.choice(points).to_3d()
-        #         loc2 = loc + ((loc3 - loc) * .5)
-        #         spline.points[0].co = loc1.to_4d()
-        #         spline.points[1].co = loc2.to_4d()
-        #         spline.points[2].co = loc3.to_4d()
-        #         spline.use_endpoint_u = True
-        #         spline.order_u = 3
-
-        #         # !!!TEMP DRAPE
-        #         random.seed(self.seed + i * ip * 100)
-        #         drape = random.uniform(self.drape_min, self.drape_max)
-        #         length = self.spline_length(spline)
-        #         average_length = self.average_spline_length(curve)
-        #         if self.length_solver:
-        #             drape = length * drape / average_length
-        #         spline.points[1].co.z += drape
-
-        # cobweb = bpy.data.objects.new("cobweb", curve)
-        # bpy.context.scene.objects.link(cobweb)
-        # # Delete the object with the particle system, we don't need it anymore.
-        # scene.objects.unlink(particle_object)
-        # bpy.data.objects.remove(particle_object)
-        # # Add some drape to the splines.
-        # # Select the cobweb and make it the active object.
-        # cobweb.select = True
-        # bpy.context.scene.objects.active = cobweb
 
         return {'FINISHED'}
 
