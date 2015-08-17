@@ -255,7 +255,7 @@ def get_points(obj, amount=1, method='SURFACE', apply_modifiers=True, seed=0):
                                               - 'VOLUME'
                                               - 'PIVOT'
         bool apply_modifiers - use the deformed or original mesh
-        int seed                - the seed for the randomization
+        int seed             - the seed for the randomization
     """
 
     valid_methods = {'VERTS', 'EDGES', 'SURFACE', 'VOLUME', 'PIVOT'}

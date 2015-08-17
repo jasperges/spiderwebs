@@ -104,6 +104,7 @@ class Spiderweb(bpy.types.Operator):
 
     # Draw
     def draw(self, context):
+        random.seed(self.seed)
         layout = self.layout
 
         # Options
@@ -133,7 +134,6 @@ class Spiderweb(bpy.types.Operator):
 
     # Execute
     def execute(self, context):
-        random.seed(self.seed)
 
         def drape(splines):
             random.seed(self.seed)
@@ -186,7 +186,7 @@ class Spiderweb(bpy.types.Operator):
                 main_splines.append((start_point, mid_point, end_point))
 
         # Drape main splines
-        main_splines = drape(main_splines)
+        # main_splines = drape(main_splines)
 
         # Create the points of the sub strands (every spline has 3 points)
         sub_splines = []
@@ -214,7 +214,7 @@ class Spiderweb(bpy.types.Operator):
                 sub_splines.append((start_point, mid_point, end_point))
 
         # Drape the sub splines
-        sub_splines = drape(sub_splines)
+        # sub_splines = drape(sub_splines)
 
         curve = curve_tools.create_curve(name="web")
         for spline in main_splines + sub_splines:
