@@ -140,8 +140,13 @@ class Spiderweb(bpy.types.Operator):
     def execute(self, context):
 
         def drape_spline(spline):
+            drape = random.uniform(self.drape_min, self.drape_max)
             # For now only a spline with 3 points works
-            spline[1].z += random.uniform(self.drape_min, self.drape_max)
+            if self.length_solver:
+                simple_length = (spline[2] - spline[0]).length / 5
+            else:
+                simple_length = 1
+            spline[1].z += drape * simple_length
 
             return spline
 
