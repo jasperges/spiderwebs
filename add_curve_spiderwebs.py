@@ -60,6 +60,11 @@ class Spiderweb(bpy.types.Operator):
                                   default=1,
                                   min=1,
                                   max=100)
+    include_sub = BoolProperty(name="Include sub strands",
+                               description="Sub strands will also be "
+                                           "generated between already"
+                                           " generated sub strands",
+                               default=True)
     sub_iterations = IntProperty(name="Iterations",
                                  description="Iterations",
                                  default=3,
@@ -96,7 +101,9 @@ class Spiderweb(bpy.types.Operator):
                               soft_max=50.0,
                               step=10)
     length_solver = BoolProperty(name="Length solver",
-                                 description="Length solver",
+                                 description="The amount of drape is also "
+                                             "dependent on the length of "
+                                             "the strand",
                                  default=True)
 
     # Draw
@@ -111,6 +118,7 @@ class Spiderweb(bpy.types.Operator):
         box.prop(self, 'main_iterations')
         box = layout.box()
         box.label(text="Sub strands")
+        box.prop(self, 'include_sub')
         box.prop(self, 'sub_iterations')
         box = layout.box()
         box.label(text="General options")
@@ -131,14 +139,19 @@ class Spiderweb(bpy.types.Operator):
     # Execute
     def execute(self, context):
 
-        def drape(splines):
-            random.seed(self.seed)
-            for i, spline in enumerate(splines):
-                # random.seed(self.seed + i)
-                # For now only a spline with 3 points works
-                spline[1].z += random.uniform(self.drape_min, self.drape_max)
+        def drape_spline(spline):
+            # For now only a spline with 3 points works
+            spline[1].z += random.uniform(self.drape_min, self.drape_max)
 
-            return splines
+            return spline
+
+        def drape_splines(splines):
+            draped_splines = []
+            for spline in splines:
+                spline = drape_spline(spline)
+                draped_splines.append(spline)
+
+            return draped_splines
 
         selected_objects = bpy.context.selected_objects
         web_objects = [obj for obj in selected_objects if obj.type == 'MESH']
@@ -183,14 +196,23 @@ class Spiderweb(bpy.types.Operator):
                 main_splines.append((start_point, mid_point, end_point))
 
         # Drape main splines
-        main_splines = drape(main_splines)
-
-        # Create the points of the sub strands (every spline has 3 points)
-        sub_splines = []
-        resolution_points = [curve_tools.get_nurbs_points(spline)
-                             for spline in main_splines]
         random.seed(self.seed)
-        for i in range(self.sub_iterations):
+        main_splines = drape_splines(main_splines)
+
+        def sub_strands_iter(splines, count=0):
+            if count >= self.sub_iterations:
+                return splines
+            splines += create_sub_strands(splines)
+            count += 1
+            return sub_strands_iter(splines, count)
+
+        def create_sub_strands(splines, points=None):
+            new_splines = []
+            if not points:
+                resolution_points = [curve_tools.get_nurbs_points(spline)
+                                     for spline in splines]
+            else:
+                resolution_points = points
             for _ in range(0, len(resolution_points), 2):
                 # Pick a random spline to start from
                 spline1 = random.choice(resolution_points)
@@ -202,19 +224,35 @@ class Spiderweb(bpy.types.Operator):
                 # Pick a random start point from spline1
                 start_index = int(random.triangular(0, len(spline1)))
                 start_point = spline1[start_index]
-                # Pick a random end point from spline2
+                # Pick a ranomd end point from spline2
                 end_index = int(random.triangular(0, len(spline2)))
                 end_point = spline2[end_index]
                 # Create the mid point
                 mid_point = start_point + (end_point - start_point) * 0.5
-                # Add the points to sub_splines
-                sub_splines.append((start_point, mid_point, end_point))
+                new_spline = (start_point, mid_point, end_point)
+                # Drape the spline
+                new_spline = drape_spline(new_spline)
+                new_splines.append(new_spline)
+                splines.append(new_spline)
 
-        # Drape the sub splines
-        sub_splines = drape(sub_splines)
+            return new_splines
+
+        random.seed(self.seed)
+        if self.sub_iterations and self.include_sub:
+            splines = sub_strands_iter(main_splines)
+        elif self.sub_iterations and not self.include_sub:
+            sub_splines = []
+            points = [curve_tools.get_nurbs_points(spline)
+                      for spline in main_splines]
+            for _ in range(self.sub_iterations):
+                sub_splines += create_sub_strands(main_splines, points)
+            splines = main_splines + sub_splines
+        else:
+            splines = main_splines
 
         curve = curve_tools.create_curve(name="web")
-        for spline in main_splines + sub_splines:
+        # for spline in main_splines + sub_splines:
+        for spline in splines:
             points = [p for p in spline]
             curve_tools.create_spline(curve=curve, points=points)
 
