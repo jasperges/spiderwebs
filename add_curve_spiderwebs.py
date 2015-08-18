@@ -60,7 +60,7 @@ class Spiderweb(bpy.types.Operator):
                                   default=1,
                                   min=1,
                                   max=100)
-    include_sub = BoolProperty(name="Include sub strands",
+    include_sub = BoolProperty(name="Recursive sub strands",
                                description="Sub strands will also be "
                                            "generated between already"
                                            " generated sub strands",
